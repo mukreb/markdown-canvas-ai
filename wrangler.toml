@@ -1,0 +1,13 @@
+# Cloudflare Pages configuration.
+#
+# The static client is built to ./dist by `npm run build`; the /functions
+# directory is auto-deployed as Pages Functions for the /api/* routes.
+#
+# Set the ANTHROPIC_API_KEY secret before/after the first deploy:
+#   npx wrangler pages secret put ANTHROPIC_API_KEY
+# (or add it under Settings → Environment variables in the Cloudflare dashboard)
+
+name = "markdown-canvas-ai"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-05-01"
+compatibility_flags = ["nodejs_compat"]

@@ -8,3 +8,5 @@ dist-server
 .DS_Store
 npm-debug.log*
 *.tsbuildinfo
+
+.wrangler

@@ -4,15 +4,14 @@
     "lib": ["ES2022"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "types": ["node"],
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noEmit": false,
-    "outDir": "../dist-server",
-    "rootDir": "."
+    "noEmit": true
   },
-  "include": ["."]
+  "include": [".", "../shared"]
 }
