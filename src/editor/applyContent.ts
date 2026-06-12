@@ -1,24 +1,37 @@
 import type { Editor } from "@tiptap/react";
-import type { Content } from "@tiptap/core";
+import type { Content, JSONContent } from "@tiptap/core";
 
 /**
  * Turn AI text output into TipTap content for insertion.
  *
  * v1 applies AI output as plain text (prose-correct: rewrites, shortenings, and
  * expansions land cleanly). Multi-paragraph output is split into paragraph nodes
- * so block structure survives; single-block output is inserted inline so it
- * doesn't break the surrounding paragraph.
+ * so block structure survives; single-block output is inserted as inline nodes
+ * so it doesn't break the surrounding paragraph.
  *
- * NOTE: Markdown syntax in the output (e.g. **bold**) is currently inserted
- * literally. Markdown-aware insertion is the next planned enhancement.
+ * We always build JSON text nodes (never a raw string) so the output is inserted
+ * literally — passing a string to `insertContentAt` would parse it as HTML and
+ * corrupt content like `Use <T> for generics` or a literal `<div>` tag.
+ *
+ * NOTE: Markdown syntax in the output (e.g. **bold**) is still inserted
+ * literally as text. Markdown-aware insertion is the next planned enhancement.
  */
+function inlineNodes(text: string): JSONContent[] {
+  const nodes: JSONContent[] = [];
+  text.split("\n").forEach((line, i) => {
+    if (i > 0) nodes.push({ type: "hardBreak" });
+    if (line) nodes.push({ type: "text", text: line });
+  });
+  return nodes;
+}
+
 export function buildInsertContent(text: string): Content {
   const trimmed = text.replace(/\s+$/, "");
-  if (!trimmed.includes("\n\n")) return trimmed;
+  if (!trimmed.includes("\n\n")) return inlineNodes(trimmed);
 
   return trimmed.split(/\n{2,}/).map((para) => ({
     type: "paragraph",
-    content: para ? [{ type: "text", text: para }] : [],
+    content: inlineNodes(para),
   }));
 }
 
