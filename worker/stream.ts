@@ -1,21 +1,27 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { DEFAULT_MODEL, MAX_TOKENS } from "../../shared/ai";
+import { DEFAULT_MODEL, MAX_TOKENS } from "../shared/ai";
 
 export interface Env {
+  /** Static assets binding (the built Vite client in ./dist). */
+  ASSETS: Fetcher;
   ANTHROPIC_API_KEY?: string;
   ANTHROPIC_MODEL?: string;
 }
 
 /**
- * Build an SSE Response that streams a Claude completion. This is the Cloudflare
- * Workers counterpart to the Express `streamCompletion` — same event framing
- * (`delta` / `done` / `error`), but written to a Web ReadableStream.
+ * Build an SSE Response that streams a Claude completion on the Workers
+ * runtime. Same event framing as the Express dev server (`delta` / `done` /
+ * `error`), written to a Web ReadableStream.
+ *
+ * `apiKey` is the resolved key for this request: the user-provided BYOK key
+ * when present, otherwise the server-configured secret.
  */
 export function sseStream(
   env: Env,
+  apiKey: string,
   opts: { system: string; userContent: string; thinking?: boolean },
 ): Response {
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+  const client = new Anthropic({ apiKey });
   const model = env.ANTHROPIC_MODEL || DEFAULT_MODEL;
   const encoder = new TextEncoder();
 

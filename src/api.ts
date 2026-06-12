@@ -3,6 +3,7 @@
  * and we need to POST a JSON body). Parses the `event:`/`data:` SSE framing the
  * server writes and dispatches text deltas as they arrive.
  */
+import { getApiKey } from "./apiKey.ts";
 
 export interface StreamHandlers {
   onDelta: (text: string) => void;
@@ -35,11 +36,16 @@ async function streamPost(
   body: unknown,
   handlers: StreamHandlers,
 ): Promise<void> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  // BYOK: include the user's key (kept in their browser) when they set one.
+  const apiKey = getApiKey();
+  if (apiKey) headers["x-anthropic-key"] = apiKey;
+
   let res: Response;
   try {
     res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
       signal: handlers.signal,
     });
@@ -50,6 +56,12 @@ async function streamPost(
   }
 
   if (!res.ok || !res.body) {
+    if (res.status === 401) {
+      handlers.onError?.(
+        "No API key set. Click the 🔑 button in the header to add your Anthropic API key.",
+      );
+      return;
+    }
     handlers.onError?.(`Request failed (${res.status})`);
     return;
   }

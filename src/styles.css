@@ -564,6 +564,49 @@ button {
   border-radius: 6px;
 }
 
+/* ---- API key (BYOK) ---- */
+.mc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 24, 40, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+  z-index: 100;
+}
+.mc-modal {
+  width: 440px;
+  max-width: calc(100vw - 24px);
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+.mc-modal-text {
+  font-size: 14px;
+  color: var(--text-soft);
+  margin: 0 0 10px;
+}
+.mc-keybanner {
+  background: #fff8e6;
+  border-bottom: 1px solid #f0c64a;
+  padding: 8px 18px;
+  font-size: 14px;
+}
+.mc-keybanner button {
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  padding: 0;
+}
+.mc-btn-attention {
+  border-color: #f0c64a;
+  background: #fff8e6;
+}
+
 /* ---- Streaming caret ---- */
 .mc-caret {
   display: inline-block;

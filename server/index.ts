@@ -17,19 +17,27 @@ import {
 const PORT = Number(process.env.PORT ?? 8787);
 const MODEL = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
 
-const apiKey = process.env.ANTHROPIC_API_KEY;
-if (!apiKey) {
+const serverKey = process.env.ANTHROPIC_API_KEY;
+if (!serverKey) {
   console.warn(
-    "[markdown-canvas-ai] ANTHROPIC_API_KEY is not set — AI endpoints will return errors. " +
-      "Copy .env.example to .env and add your key.",
+    "[markdown-canvas-ai] ANTHROPIC_API_KEY is not set — users must bring their own key via the app UI.",
   );
 }
-
-const client = new Anthropic({ apiKey });
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "4mb" }));
+
+/**
+ * Resolve the API key for a request: the user-provided BYOK key (header set by
+ * the app UI) wins; otherwise the server-configured key. Returns null if
+ * neither is available.
+ */
+function resolveKey(req: Request): string | null {
+  const userKey = req.headers["x-anthropic-key"];
+  if (typeof userKey === "string" && userKey) return userKey;
+  return serverKey ?? null;
+}
 
 /**
  * Stream a Claude completion to the client as Server-Sent Events.
@@ -37,9 +45,18 @@ app.use(express.json({ limit: "4mb" }));
  * are surfaced as an `error` event so the UI can react.
  */
 async function streamCompletion(
+  req: Request,
   res: Response,
   opts: { system: string; userContent: string; thinking?: boolean },
 ): Promise<void> {
+  const apiKey = resolveKey(req);
+  if (!apiKey) {
+    res.status(401).json({
+      error: "No API key. Add your Anthropic API key via the key button in the app.",
+    });
+    return;
+  }
+
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
@@ -51,6 +68,7 @@ async function streamCompletion(
   };
 
   try {
+    const client = new Anthropic({ apiKey });
     const stream = client.messages.stream({
       model: MODEL,
       max_tokens: MAX_TOKENS,
@@ -80,7 +98,7 @@ app.post("/api/ai/edit", async (req: Request, res: Response) => {
     res.status(400).json({ error: "instruction and selection are required" });
     return;
   }
-  await streamCompletion(res, {
+  await streamCompletion(req, res, {
     system: EDIT_SYSTEM,
     userContent: buildEditContent(req.body),
   });
@@ -92,7 +110,7 @@ app.post("/api/ai/resolve-comment", async (req: Request, res: Response) => {
     res.status(400).json({ error: "comment and selection are required" });
     return;
   }
-  await streamCompletion(res, {
+  await streamCompletion(req, res, {
     system: COMMENT_SYSTEM,
     userContent: buildCommentContent(req.body),
   });
@@ -103,7 +121,7 @@ app.post("/api/ai/chat", async (req: Request, res: Response) => {
     res.status(400).json({ error: "message is required" });
     return;
   }
-  await streamCompletion(res, {
+  await streamCompletion(req, res, {
     system: CHAT_SYSTEM,
     userContent: buildChatContent(req.body),
     thinking: true,
@@ -111,7 +129,12 @@ app.post("/api/ai/chat", async (req: Request, res: Response) => {
 });
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, model: MODEL, hasKey: Boolean(apiKey) });
+  res.json({
+    ok: true,
+    model: MODEL,
+    hasServerKey: Boolean(serverKey),
+    runtime: "express-dev",
+  });
 });
 
 app.listen(PORT, () => {

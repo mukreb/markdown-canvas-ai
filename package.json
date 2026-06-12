@@ -10,9 +10,9 @@
     "dev:server": "tsx watch server/index.ts",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "pages:dev": "npm run build && wrangler pages dev dist",
-    "deploy": "npm run build && wrangler pages deploy dist",
-    "typecheck": "tsc --noEmit && tsc -p server/tsconfig.json --noEmit && tsc -p functions/tsconfig.json --noEmit"
+    "cf:dev": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy",
+    "typecheck": "tsc --noEmit && tsc -p server/tsconfig.json --noEmit && tsc -p worker/tsconfig.json --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",

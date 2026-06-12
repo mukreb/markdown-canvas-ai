@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
@@ -17,6 +17,8 @@ import { SAMPLE_DOC } from "./editor/sampleDoc.ts";
 import { aiChat, aiResolveComment } from "./api.ts";
 import type { ChatMessage, Comment, SelectionSnapshot } from "./types.ts";
 
+import { getApiKey } from "./apiKey.ts";
+import { ApiKeyDialog } from "./components/ApiKeyDialog.tsx";
 import { EditorMenuBar } from "./components/EditorMenuBar.tsx";
 import { FloatingToolbar } from "./components/FloatingToolbar.tsx";
 import { EditPopover } from "./components/EditPopover.tsx";
@@ -43,6 +45,25 @@ export default function App() {
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [chatBusy, setChatBusy] = useState(false);
   const [tab, setTab] = useState<"comments" | "chat">("comments");
+
+  // BYOK state: does the user have a personal key, and does the deployment
+  // have a server-side fallback key?
+  const [hasUserKey, setHasUserKey] = useState(() => Boolean(getApiKey()));
+  const [hasServerKey, setHasServerKey] = useState(true); // optimistic until /health answers
+  const [showKeyDialog, setShowKeyDialog] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/health")
+      .then((r) => r.json())
+      .then((h: { hasServerKey?: boolean; hasKey?: boolean }) =>
+        setHasServerKey(Boolean(h.hasServerKey ?? h.hasKey)),
+      )
+      .catch(() => {
+        /* server unreachable — errors will surface on first AI call */
+      });
+  }, []);
+
+  const keyMissing = !hasUserKey && !hasServerKey;
 
   const updateSelection = useCallback((editor: ReturnType<typeof useEditor>) => {
     if (!editor) return;
@@ -285,11 +306,32 @@ export default function App() {
         </div>
         <div className="mc-header-meta">
           <span className="mc-wordcount">{words} words</span>
+          <button
+            className={`mc-btn${keyMissing ? " mc-btn-attention" : ""}`}
+            onClick={() => setShowKeyDialog(true)}
+            title={
+              hasUserKey
+                ? "Using your personal API key"
+                : hasServerKey
+                  ? "Using the server's API key — optionally add your own"
+                  : "No API key — add yours to enable AI"
+            }
+          >
+            🔑 {hasUserKey ? "Your key" : hasServerKey ? "API key" : "Add API key"}
+          </button>
           <button className="mc-btn" onClick={exportMarkdown}>
             ⬇ Export .md
           </button>
         </div>
       </header>
+
+      {keyMissing && (
+        <div className="mc-keybanner">
+          AI features need an Anthropic API key.{" "}
+          <button onClick={() => setShowKeyDialog(true)}>Add your key</button> — it
+          stays in your browser.
+        </div>
+      )}
 
       <div className="mc-body">
         <main className="mc-main">
@@ -361,6 +403,14 @@ export default function App() {
           quote={action.snapshot.text}
           onSave={saveComment}
           onCancel={() => setAction(null)}
+        />
+      )}
+
+      {showKeyDialog && (
+        <ApiKeyDialog
+          hasServerKey={hasServerKey}
+          onClose={() => setShowKeyDialog(false)}
+          onSaved={setHasUserKey}
         />
       )}
     </div>
