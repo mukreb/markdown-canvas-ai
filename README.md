@@ -108,11 +108,12 @@ npm run pages:dev        # builds, then serves via `wrangler pages dev`
 
 ## Known limitations / roadmap
 
-- **Markdown-aware apply.** AI output is currently inserted as plain text
-  (prose-correct, but inline markdown like `**bold**` lands literally).
-  Markdown-structured insertion is the next planned enhancement.
 - Comments and document state live in memory only — no persistence yet.
 - No multi-document or collaboration support yet.
+
+Applied AI output is rendered as real markdown — `**bold**`, lists, headings,
+and links come through as formatting, not literal syntax (with raw HTML escaped
+so text like `Use <T>` stays literal).
 
 ## License
 

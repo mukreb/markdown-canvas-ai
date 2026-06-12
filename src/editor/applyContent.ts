@@ -1,52 +1,27 @@
 import type { Editor } from "@tiptap/react";
-import type { Content, JSONContent } from "@tiptap/core";
 
 /**
- * Turn AI text output into TipTap content for insertion.
+ * Replace a document range with AI output, rendered as real markdown.
  *
- * v1 applies AI output as plain text (prose-correct: rewrites, shortenings, and
- * expansions land cleanly). Multi-paragraph output is split into paragraph nodes
- * so block structure survives; single-block output is inserted as inline nodes
- * so it doesn't break the surrounding paragraph.
+ * `tiptap-markdown` overrides `insertContentAt` to parse string content as
+ * markdown, so the AI's `**bold**`, lists, headings, and links render visually
+ * (the "visual markdown" promise) instead of landing as literal syntax. The
+ * first paragraph is unwrapped so the replacement flows inline where the
+ * selection started, while any following blocks become proper block nodes.
  *
- * We always build JSON text nodes (never a raw string) so the output is inserted
- * literally — passing a string to `insertContentAt` would parse it as HTML and
- * corrupt content like `Use <T> for generics` or a literal `<div>` tag.
- *
- * NOTE: Markdown syntax in the output (e.g. **bold**) is still inserted
- * literally as text. Markdown-aware insertion is the next planned enhancement.
+ * Because the editor is configured with `html: false`, raw angle-bracket text
+ * like `Use <T> for generics` or a literal `<div>` is escaped and inserted as
+ * literal text rather than being interpreted as HTML.
  */
-function inlineNodes(text: string): JSONContent[] {
-  const nodes: JSONContent[] = [];
-  text.split("\n").forEach((line, i) => {
-    if (i > 0) nodes.push({ type: "hardBreak" });
-    if (line) nodes.push({ type: "text", text: line });
-  });
-  return nodes;
-}
-
-export function buildInsertContent(text: string): Content {
-  const trimmed = text.replace(/\s+$/, "");
-  if (!trimmed.includes("\n\n")) return inlineNodes(trimmed);
-
-  return trimmed.split(/\n{2,}/).map((para) => ({
-    type: "paragraph",
-    content: inlineNodes(para),
-  }));
-}
-
-/** Replace a document range with AI output, then place the cursor after it. */
 export function replaceRange(
   editor: Editor,
   range: { from: number; to: number },
   text: string,
 ): void {
+  const markdown = text.replace(/\s+$/, "");
   editor
     .chain()
     .focus()
-    .insertContentAt(
-      { from: range.from, to: range.to },
-      buildInsertContent(text),
-    )
+    .insertContentAt({ from: range.from, to: range.to }, markdown)
     .run();
 }
