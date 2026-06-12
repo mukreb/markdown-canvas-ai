@@ -201,15 +201,47 @@ button {
 
 .mc-editor ul[data-type="taskList"] {
   list-style: none;
-  padding-left: 4px;
+  padding-left: 2px;
+  margin: 0;
 }
 .mc-editor ul[data-type="taskList"] li {
   display: flex;
   gap: 8px;
   align-items: flex-start;
 }
+.mc-editor ul[data-type="taskList"] li + li {
+  margin-top: 0.3em;
+}
+/* Checkbox label: don't stretch, align with the first line of text. */
 .mc-editor ul[data-type="taskList"] li > label {
-  margin-top: 4px;
+  flex: 0 0 auto;
+  margin: 0;
+  height: 1.6em;
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
+}
+.mc-editor ul[data-type="taskList"] li > label input[type="checkbox"] {
+  margin: 0;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+/* Content cell fills the row; kill the UA paragraph margins that pushed the
+   text below the checkbox and opened large gaps between items. */
+.mc-editor ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.mc-editor ul[data-type="taskList"] li > div > p {
+  margin: 0;
+}
+.mc-editor ul[data-type="taskList"] li > div > * + * {
+  margin-top: 0.4em;
+}
+.mc-editor ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--muted);
+  text-decoration: line-through;
 }
 
 .mc-editor p.is-editor-empty:first-child::before {
