@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      # Keep routine bumps to a few PRs instead of one per package.
+      dev-dependencies:
+        dependency-type: "development"
+      production-dependencies:
+        dependency-type: "production"
+    ignore:
+      # esbuild is a transitive build-only dependency (via vite and wrangler),
+      # pinned by both to versions below the advisory's fixed 0.28.1. There is
+      # no lockfile update that resolves it (Dependabot reports
+      # security_update_not_possible), and it never ships to the deployed
+      # Worker runtime — only the local dev server / build use it. Ignore it
+      # here so Dependabot stops failing on an unsatisfiable security update;
+      # it will resolve naturally once vite/wrangler adopt esbuild >= 0.28.
+      - dependency-name: "esbuild"
