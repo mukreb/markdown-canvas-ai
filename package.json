@@ -34,18 +34,18 @@
     "tiptap-markdown": "^0.8.10"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260612.1",
+    "@cloudflare/workers-types": "^4.20260620.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
-    "@types/node": "^22.10.5",
+    "@types/node": "^26.0.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.3.4",
-    "concurrently": "^9.1.2",
+    "@vitejs/plugin-react": "^6.0.2",
+    "concurrently": "^10.0.3",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3",
-    "vite": "^6.0.7",
-    "wrangler": "^4.100.0"
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "wrangler": "^4.103.0"
   },
   "overrides": {
     "shell-quote": "^1.8.4"
