@@ -1,0 +1,22 @@
+# Cloudflare Workers configuration (Worker + static assets).
+#
+# `npm run build` outputs the Vite client to ./dist; `wrangler deploy` then
+# uploads the Worker (worker/index.ts, serving /api/*) together with those
+# static assets. This matches the Git-connected Workers Builds flow, which runs:
+#   build:  npm run build
+#   deploy: npx wrangler deploy
+#
+# Set the ANTHROPIC_API_KEY secret once (dashboard: Worker → Settings →
+# Variables and Secrets → Add → Secret), or via:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+
+name = "markdown-canvas-ai"
+main = "worker/index.ts"
+compatibility_date = "2025-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
