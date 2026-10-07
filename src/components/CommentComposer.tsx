@@ -16,8 +16,12 @@ export function CommentComposer({ anchorRect, quote, onSave, onCancel }: Comment
     ref.current?.focus();
   }, []);
 
-  const top = anchorRect.bottom + window.scrollY + 8;
-  const left = Math.max(12, anchorRect.left + window.scrollX);
+  // Position once, in document coordinates, so a re-render after the page has
+  // scrolled doesn't move the popover out from under the pointer.
+  const [{ top, left }] = useState(() => ({
+    top: anchorRect.bottom + window.scrollY + 8,
+    left: Math.max(12, anchorRect.left + window.scrollX),
+  }));
 
   return (
     <div className="mc-popover" style={{ top, left }} onMouseDown={(e) => e.stopPropagation()}>

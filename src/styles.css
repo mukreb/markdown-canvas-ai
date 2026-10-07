@@ -656,10 +656,14 @@ button {
 }
 
 @media (max-width: 880px) {
+  /* Stack the sidebar under the editor instead of hiding it, so chat and
+     comments stay reachable on phones. */
   .mc-body {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 35vh);
   }
   .mc-sidebar {
-    display: none;
+    border-left: none;
+    border-top: 1px solid var(--border);
   }
 }

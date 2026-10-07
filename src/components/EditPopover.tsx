@@ -7,7 +7,8 @@ interface EditPopoverProps {
   documentText: string;
   /** When provided, the popover runs this instruction immediately on open. */
   autoInstruction?: string;
-  onApply: (text: string) => void;
+  /** Applies the suggestion; returns an error message if it couldn't. */
+  onApply: (text: string) => string | void;
   onClose: () => void;
 }
 
@@ -31,7 +32,6 @@ export function EditPopover({
   const [error, setError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const ranAuto = useRef(false);
 
   const run = (text: string) => {
     const trimmed = text.trim();
@@ -57,20 +57,38 @@ export function EditPopover({
     );
   };
 
-  // Auto-run quick actions once; otherwise focus the input.
-  useEffect(() => {
-    if (autoInstruction && !ranAuto.current) {
-      ranAuto.current = true;
-      run(autoInstruction);
-    } else if (!autoInstruction) {
-      inputRef.current?.focus();
+  // An aborted stream reports neither done nor error, so leave the streaming
+  // state here. Back to idle (not done) so a cut-off rewrite can't be accepted.
+  const stop = () => {
+    abortRef.current?.abort();
+    setStatus("idle");
+  };
+
+  const accept = () => {
+    const applyError = onApply(output);
+    if (applyError) {
+      setError(applyError);
+      setStatus("error");
     }
+  };
+
+  // Auto-run quick actions on open; otherwise focus the input. Under
+  // StrictMode's dev-only effect replay, the cleanup aborts the first run and
+  // the replayed effect starts it again.
+  useEffect(() => {
+    if (autoInstruction) run(autoInstruction);
+    else inputRef.current?.focus();
     return () => abortRef.current?.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const top = anchorRect.bottom + window.scrollY + 8;
-  const left = Math.max(12, anchorRect.left + window.scrollX);
+  // Position once, in document coordinates. Re-deriving it from the current
+  // scroll on every render made the popover jump when the page had scrolled,
+  // so a click could start on Accept and land on another button.
+  const [{ top, left }] = useState(() => ({
+    top: anchorRect.bottom + window.scrollY + 8,
+    left: Math.max(12, anchorRect.left + window.scrollX),
+  }));
 
   return (
     <div className="mc-popover" style={{ top, left }} onMouseDown={(e) => e.stopPropagation()}>
@@ -105,7 +123,7 @@ export function EditPopover({
           {status === "streaming" ? "Generating…" : "Generate"}
         </button>
         {status === "streaming" && (
-          <button className="mc-btn" onClick={() => abortRef.current?.abort()}>
+          <button className="mc-btn" onClick={stop}>
             Stop
           </button>
         )}
@@ -125,7 +143,7 @@ export function EditPopover({
 
       {status === "done" && output && (
         <div className="mc-popover-actions">
-          <button className="mc-btn-primary" onClick={() => onApply(output)}>
+          <button className="mc-btn-primary" onClick={accept}>
             ✓ Accept
           </button>
           <button className="mc-btn" onClick={() => run(instruction)}>

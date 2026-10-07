@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
+import type { Transaction } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import Highlight from "@tiptap/extension-highlight";
@@ -126,16 +127,48 @@ export default function App() {
 
   // --- Selection-scoped AI editing ---------------------------------------
 
+  // The edit target's positions, mapped through every transaction so typing
+  // elsewhere while the AI streams doesn't shift what Accept replaces.
+  const editRangeRef = useRef<{ from: number; to: number } | null>(null);
+
+  useEffect(() => {
+    if (!editor) return;
+    const remap = ({ transaction }: { transaction: Transaction }) => {
+      const range = editRangeRef.current;
+      if (!range || !transaction.docChanged) return;
+      editRangeRef.current = {
+        from: transaction.mapping.map(range.from, 1),
+        to: transaction.mapping.map(range.to, -1),
+      };
+    };
+    editor.on("transaction", remap);
+    return () => {
+      editor.off("transaction", remap);
+    };
+  }, [editor]);
+
   const openEdit = (autoInstruction?: string) => {
     const snapshot = snapshotSelection();
     if (!snapshot || !selInfo) return;
+    editRangeRef.current = { from: snapshot.from, to: snapshot.to };
     setAction({ kind: "edit", snapshot, rect: selInfo.rect, autoInstruction });
   };
 
-  const applyEdit = (text: string) => {
-    if (!editor || action?.kind !== "edit") return;
-    replaceRange(editor, action.snapshot, text);
+  const closeEdit = () => {
+    editRangeRef.current = null;
     setAction(null);
+  };
+
+  const applyEdit = (text: string): string | void => {
+    const range = editRangeRef.current;
+    if (!editor || action?.kind !== "edit" || !range) return;
+    const current =
+      range.from < range.to ? editor.state.doc.textBetween(range.from, range.to, "\n") : "";
+    if (current !== action.snapshot.text) {
+      return "The selected text changed while the AI was writing. Select it again and retry.";
+    }
+    replaceRange(editor, range, text);
+    closeEdit();
     setSelInfo(null);
   };
 
@@ -278,7 +311,8 @@ export default function App() {
               next[next.length - 1] = {
                 ...last,
                 pending: false,
-                content: last.content || `⚠️ ${m}`,
+                // Keep any partial answer, but say it was cut off.
+                content: last.content ? `${last.content}\n\n⚠️ ${m}` : `⚠️ ${m}`,
               };
             return next;
           });
@@ -397,7 +431,7 @@ export default function App() {
           documentText={docText()}
           autoInstruction={action.autoInstruction}
           onApply={applyEdit}
-          onClose={() => setAction(null)}
+          onClose={closeEdit}
         />
       )}
 
