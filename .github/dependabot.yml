@@ -12,11 +12,8 @@ updates:
       production-dependencies:
         dependency-type: "production"
     ignore:
-      # esbuild is a transitive build-only dependency (via vite and wrangler),
-      # pinned by both to versions below the advisory's fixed 0.28.1. There is
-      # no lockfile update that resolves it (Dependabot reports
-      # security_update_not_possible), and it never ships to the deployed
-      # Worker runtime — only the local dev server / build use it. Ignore it
-      # here so Dependabot stops failing on an unsatisfiable security update;
-      # it will resolve naturally once vite/wrangler adopt esbuild >= 0.28.
-      - dependency-name: "esbuild"
+      # @types/node's major version should track the Node runtime the project
+      # builds and runs on (Node 22 — Cloudflare Workers Builds and local dev),
+      # not the newest Node release. Bump this major together with the runtime.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
