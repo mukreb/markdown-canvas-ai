@@ -62,7 +62,9 @@ async function streamCompletion(
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders?.();
 
+  let clientGone = false;
   const send = (event: string, data: unknown) => {
+    if (clientGone) return;
     res.write(`event: ${event}\n`);
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
@@ -79,11 +81,21 @@ async function streamCompletion(
       messages: [{ role: "user", content: opts.userContent }],
     });
 
+    // If the client disconnects mid-stream, stop generating (and paying for)
+    // tokens nobody will read.
+    res.on("close", () => {
+      if (!res.writableEnded) {
+        clientGone = true;
+        stream.abort();
+      }
+    });
+
     stream.on("text", (textDelta: string) => send("delta", { text: textDelta }));
 
     const final = await stream.finalMessage();
     send("done", { stop_reason: final.stop_reason, usage: final.usage });
   } catch (err) {
+    if (clientGone) return;
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[markdown-canvas-ai] stream error:", message);
     send("error", { message });

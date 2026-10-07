@@ -24,15 +24,19 @@ export function sseStream(
   const client = new Anthropic({ apiKey });
   const model = env.ANTHROPIC_MODEL || DEFAULT_MODEL;
   const encoder = new TextEncoder();
+  let upstream: ReturnType<typeof client.messages.stream> | undefined;
+  let cancelled = false;
 
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (event: string, data: unknown) =>
+      const send = (event: string, data: unknown) => {
+        if (cancelled) return;
         controller.enqueue(
           encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
         );
+      };
       try {
-        const stream = client.messages.stream({
+        upstream = client.messages.stream({
           model,
           max_tokens: MAX_TOKENS,
           ...(opts.thinking
@@ -41,16 +45,21 @@ export function sseStream(
           system: opts.system,
           messages: [{ role: "user", content: opts.userContent }],
         });
-        stream.on("text", (t: string) => send("delta", { text: t }));
-        const final = await stream.finalMessage();
+        upstream.on("text", (t: string) => send("delta", { text: t }));
+        const final = await upstream.finalMessage();
         send("done", { stop_reason: final.stop_reason, usage: final.usage });
       } catch (err) {
         send("error", {
           message: err instanceof Error ? err.message : "Unknown error",
         });
       } finally {
-        controller.close();
+        if (!cancelled) controller.close();
       }
+    },
+    // The client disconnected: stop generating (and paying for) tokens.
+    cancel() {
+      cancelled = true;
+      upstream?.abort();
     },
   });
 
