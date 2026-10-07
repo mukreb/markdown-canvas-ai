@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      # Keep routine bumps to a few PRs instead of one per package.
+      dev-dependencies:
+        dependency-type: "development"
+      production-dependencies:
+        dependency-type: "production"
+    ignore:
+      # @types/node's major version should track the Node runtime the project
+      # builds and runs on (Node 22 — Cloudflare Workers Builds and local dev),
+      # not the newest Node release. Bump this major together with the runtime.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
