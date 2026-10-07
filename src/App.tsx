@@ -93,8 +93,13 @@ export default function App() {
   }, []);
 
   const editor = useEditor({
+    // The word count and the menu bar's active states are read during render,
+    // so re-render on every transaction (Tiptap 3 no longer does by default).
+    shouldRerenderOnTransaction: true,
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      // Link is configured separately below; underline has no markdown form
+      // (html is off), so it would be silently dropped on export.
+      StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: false, underline: false }),
       Markdown.configure({ html: false, transformPastedText: true }),
       Highlight,
       Typography,
@@ -110,8 +115,7 @@ export default function App() {
     onSelectionUpdate: ({ editor }) => updateSelection(editor),
   });
 
-  const docText = () =>
-    (editor?.storage.markdown?.getMarkdown?.() as string | undefined) ?? "";
+  const docText = () => editor?.storage.markdown.getMarkdown() ?? "";
 
   const snapshotSelection = (): SelectionSnapshot | null => {
     if (!editor) return null;
