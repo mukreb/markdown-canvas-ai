@@ -3,14 +3,22 @@ import { useEffect, useRef, useState } from "react";
 interface CommentComposerProps {
   anchorRect: DOMRect;
   quote: string;
-  onSave: (body: string) => void;
+  /** Saves the comment; returns an error message if it couldn't. */
+  onSave: (body: string) => string | void;
   onCancel: () => void;
 }
 
 /** Small popover for writing a comment note on the current selection. */
 export function CommentComposer({ anchorRect, quote, onSave, onCancel }: CommentComposerProps) {
   const [body, setBody] = useState("");
+  const [error, setError] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
+
+  const save = () => {
+    const note = body.trim();
+    if (!note) return;
+    setError(onSave(note) || "");
+  };
 
   useEffect(() => {
     ref.current?.focus();
@@ -42,14 +50,15 @@ export function CommentComposer({ anchorRect, quote, onSave, onCancel }: Comment
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            if (body.trim()) onSave(body.trim());
+            save();
           } else if (e.key === "Escape") {
             onCancel();
           }
         }}
       />
+      {error && <div className="mc-error">{error}</div>}
       <div className="mc-popover-actions">
-        <button className="mc-btn-primary" disabled={!body.trim()} onClick={() => onSave(body.trim())}>
+        <button className="mc-btn-primary" disabled={!body.trim()} onClick={save}>
           Add comment
         </button>
         <button className="mc-btn" onClick={onCancel}>

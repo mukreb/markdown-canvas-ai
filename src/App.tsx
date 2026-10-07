@@ -127,16 +127,16 @@ export default function App() {
 
   // --- Selection-scoped AI editing ---------------------------------------
 
-  // The edit target's positions, mapped through every transaction so typing
-  // elsewhere while the AI streams doesn't shift what Accept replaces.
-  const editRangeRef = useRef<{ from: number; to: number } | null>(null);
+  // The open popover's target positions (edit or comment), mapped through
+  // every transaction so typing elsewhere doesn't shift what it applies to.
+  const actionRangeRef = useRef<{ from: number; to: number } | null>(null);
 
   useEffect(() => {
     if (!editor) return;
     const remap = ({ transaction }: { transaction: Transaction }) => {
-      const range = editRangeRef.current;
+      const range = actionRangeRef.current;
       if (!range || !transaction.docChanged) return;
-      editRangeRef.current = {
+      actionRangeRef.current = {
         from: transaction.mapping.map(range.from, 1),
         to: transaction.mapping.map(range.to, -1),
       };
@@ -150,17 +150,17 @@ export default function App() {
   const openEdit = (autoInstruction?: string) => {
     const snapshot = snapshotSelection();
     if (!snapshot || !selInfo) return;
-    editRangeRef.current = { from: snapshot.from, to: snapshot.to };
+    actionRangeRef.current = { from: snapshot.from, to: snapshot.to };
     setAction({ kind: "edit", snapshot, rect: selInfo.rect, autoInstruction });
   };
 
-  const closeEdit = () => {
-    editRangeRef.current = null;
+  const closeAction = () => {
+    actionRangeRef.current = null;
     setAction(null);
   };
 
   const applyEdit = (text: string): string | void => {
-    const range = editRangeRef.current;
+    const range = actionRangeRef.current;
     if (!editor || action?.kind !== "edit" || !range) return;
     const current =
       range.from < range.to ? editor.state.doc.textBetween(range.from, range.to, "\n") : "";
@@ -168,7 +168,7 @@ export default function App() {
       return "The selected text changed while the AI was writing. Select it again and retry.";
     }
     replaceRange(editor, range, text);
-    closeEdit();
+    closeAction();
     setSelInfo(null);
   };
 
@@ -177,23 +177,21 @@ export default function App() {
   const openComment = () => {
     const snapshot = snapshotSelection();
     if (!snapshot || !selInfo) return;
+    actionRangeRef.current = { from: snapshot.from, to: snapshot.to };
     setAction({ kind: "comment", snapshot, rect: selInfo.rect });
   };
 
-  const saveComment = (body: string) => {
-    if (!editor || action?.kind !== "comment") return;
+  const saveComment = (body: string): string | void => {
+    const range = actionRangeRef.current;
+    if (!editor || action?.kind !== "comment" || !range) return;
+    if (range.from >= range.to) {
+      return "The selected text was deleted. Select it again to comment.";
+    }
     const id = uid();
-    editor
-      .chain()
-      .focus()
-      .setTextSelection({ from: action.snapshot.from, to: action.snapshot.to })
-      .setComment(id)
-      .run();
-    setComments((prev) => [
-      { id, body, quote: action.snapshot.text, status: "open" },
-      ...prev,
-    ]);
-    setAction(null);
+    const quote = editor.state.doc.textBetween(range.from, range.to, "\n");
+    editor.chain().focus().setTextSelection(range).setComment(id).run();
+    setComments((prev) => [{ id, body, quote, status: "open" }, ...prev]);
+    closeAction();
     setSelInfo(null);
     setTab("comments");
   };
@@ -214,7 +212,9 @@ export default function App() {
 
     setComments((prev) =>
       prev.map((c) =>
-        c.id === id ? { ...c, status: "resolving", suggestion: "", error: undefined } : c,
+        c.id === id
+          ? { ...c, status: "resolving", suggestion: "", suggestionFor: range.text, error: undefined }
+          : c,
       ),
     );
 
@@ -242,12 +242,20 @@ export default function App() {
   const acceptComment = (id: string) => {
     if (!editor) return;
     const comment = comments.find((c) => c.id === id);
+    if (!comment?.suggestion) return;
     const range = findCommentRange(editor, id);
-    if (!comment?.suggestion || !range) return;
+    let problem: string | undefined;
+    if (!range) problem = "The commented text no longer exists.";
+    else if (range.text !== comment.suggestionFor)
+      problem = "The text changed after this suggestion was written. Retry for a fresh one.";
+    if (problem || !range) {
+      setComments((prev) => prev.map((c) => (c.id === id ? { ...c, error: problem } : c)));
+      return;
+    }
     replaceRange(editor, range, comment.suggestion);
     editor.commands.unsetComment(id);
     setComments((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: "resolved" } : c)),
+      prev.map((c) => (c.id === id ? { ...c, status: "resolved", error: undefined } : c)),
     );
   };
 
@@ -431,7 +439,7 @@ export default function App() {
           documentText={docText()}
           autoInstruction={action.autoInstruction}
           onApply={applyEdit}
-          onClose={closeEdit}
+          onClose={closeAction}
         />
       )}
 
@@ -440,7 +448,7 @@ export default function App() {
           anchorRect={action.rect}
           quote={action.snapshot.text}
           onSave={saveComment}
-          onCancel={() => setAction(null)}
+          onCancel={closeAction}
         />
       )}
 

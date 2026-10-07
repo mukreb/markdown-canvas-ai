@@ -7,6 +7,8 @@ export interface Comment {
   status: "open" | "resolving" | "suggested" | "resolved";
   /** Streaming AI suggestion, shown before the user accepts it. */
   suggestion?: string;
+  /** The commented text the suggestion was generated for. */
+  suggestionFor?: string;
   error?: string;
 }
 
