@@ -46,7 +46,7 @@
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.3",
-    "wrangler": "^4.148.0"
+    "wrangler": "^4.156.0"
   },
   "overrides": {
     "shell-quote": "^1.12.0",
